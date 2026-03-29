@@ -4,7 +4,10 @@ import json
 from pathlib import Path
 
 # CONFIGURAÇÕES GERAIS
-DB_NAME = "integra.db"
+# Garante que o banco de dados seja sempre criado/aberto na raiz do repositório,
+# evitando múltiplos arquivos integra.db criados em diretórios diferentes.
+BASE_DIR = Path(__file__).resolve().parents[2]
+DB_NAME = str(BASE_DIR / "integra.db")
 PAGE_SIZE = 50
 MAX_CONCURRENT = 10  # reduzir concorrência para evitar 429 (rate limit)
 

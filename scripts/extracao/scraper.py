@@ -1,22 +1,147 @@
-# C:\...\extracao\scraper.py
-
 import asyncio
 import aiohttp
 import time
 from datetime import datetime
 
-import config  # Importação direta
-from database import DatabaseManager, clean_value # Importação direta
+import config
+from database import DatabaseManager, clean_value
+
 
 def log(msg):
     """Função simples de log com timestamp."""
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-# O restante do código deste arquivo permanece exatamente o mesmo da resposta anterior...
-# (fetch_professores, _fetch_detail, fetch_detalhes, run_for_institution)
 
-# Toggle para logar apenas uma vez a ausência/estrutura de projetos
 _projetos_debug_logged = False
+
+
+def extrair_financiadores_do_projeto(proj, participacao=None):
+    """Extrai nomes dos financiadores conforme a estrutura real do Integra."""
+    financiadores = []
+
+    def adicionar(nome):
+        if not isinstance(nome, str):
+            return
+        nome = nome.strip()
+        if not nome:
+            return
+        if nome not in financiadores:
+            financiadores.append(nome)
+
+    def processar_bloco(bloco):
+        if bloco is None:
+            return
+
+        # Caso mais comum no Integra:
+        # financiadoresDoProjeto = {
+        #   "id": ...,
+        #   "financiadorDoProjeto": [
+        #       {"nomeInstituicao": "...", ...}
+        #   ]
+        # }
+        if isinstance(bloco, dict):
+            itens = bloco.get("financiadorDoProjeto")
+
+            if isinstance(itens, list):
+                for item in itens:
+                    if isinstance(item, dict):
+                        adicionar(
+                            item.get("nomeInstituicao")
+                            or item.get("nomeFinanciador")
+                            or item.get("nome")
+                            or item.get("instituicao")
+                        )
+                    elif isinstance(item, str):
+                        adicionar(item)
+                return
+
+            if isinstance(itens, dict):
+                adicionar(
+                    itens.get("nomeInstituicao")
+                    or itens.get("nomeFinanciador")
+                    or itens.get("nome")
+                    or itens.get("instituicao")
+                )
+                return
+
+            # fallback seguro para casos em que o próprio dict já é o financiador
+            adicionar(
+                bloco.get("nomeInstituicao")
+                or bloco.get("nomeFinanciador")
+                or bloco.get("nome")
+                or bloco.get("instituicao")
+            )
+            return
+
+        if isinstance(bloco, list):
+            for item in bloco:
+                if isinstance(item, dict):
+                    adicionar(
+                        item.get("nomeInstituicao")
+                        or item.get("nomeFinanciador")
+                        or item.get("nome")
+                        or item.get("instituicao")
+                    )
+                elif isinstance(item, str):
+                    adicionar(item)
+            return
+
+        if isinstance(bloco, str):
+            adicionar(bloco)
+
+    processar_bloco((proj or {}).get("financiadoresDoProjeto"))
+    processar_bloco((proj or {}).get("financiadorDoProjeto"))
+
+    if participacao is not None:
+        processar_bloco((participacao or {}).get("financiadoresDoProjeto"))
+        processar_bloco((participacao or {}).get("financiadorDoProjeto"))
+
+    return "; ".join(financiadores) if financiadores else None
+
+
+def _collect_strings(value):
+    """Coleta recursivamente strings de listas/dicts para inspeção textual."""
+    values = []
+    if value is None:
+        return values
+    if isinstance(value, str):
+        text = value.strip()
+        if text:
+            values.append(text)
+        return values
+    if isinstance(value, dict):
+        for v in value.values():
+            values.extend(_collect_strings(v))
+        return values
+    if isinstance(value, list):
+        for item in value:
+            values.extend(_collect_strings(item))
+        return values
+    text = str(value).strip()
+    if text:
+        values.append(text)
+    return values
+
+
+def eh_projeto_instituto_federal(*objs):
+    """Retorna True se houver indícios textuais de vínculo com Instituto Federal."""
+    texto = " ".join(_collect_strings(list(objs))).lower()
+    if not texto:
+        return False
+
+    palavras_validas = [
+        "instituto federal",
+        "instituto federal goiano",
+        "instituto federal de goiás",
+        "instituto federal de educação, ciência e tecnologia",
+        "if goiano", "ifg", "ifb", "ifac", "ifam", "ifap", "ifba", "ifbaiano",
+        "ifc", "ifce", "iff", "iffar", "ifes", "ifma", "ifmg", "ifms", "ifmt",
+        "ifnmg", "ifpb", "ifpe", "ifpi", "ifrj", "ifrn", "ifro", "ifrr", "ifrs",
+        "ifsc", "ifsp", "ifs", "ifsudeste", "ifsul", "ifsuldeminas", "iftm", "ifto"
+    ]
+    return any(p in texto for p in palavras_validas)
+
+
 
 async def fetch_professores(sigla, base_url, db_manager, progress_callback=None):
     """Busca a lista de todos os professores de uma instituição."""
@@ -47,7 +172,10 @@ async def fetch_professores(sigla, base_url, db_manager, progress_callback=None)
             length_returned = meta.get("length", len(batch)) or len(batch)
 
             for p in batch:
-                if slug := p.get("slug"):
+                if not isinstance(p, dict):
+                    continue
+                slug = p.get("slug")
+                if slug:
                     professores.append({
                         "nome": p.get("nome"),
                         "campus": p.get("campusNome"),
@@ -55,14 +183,14 @@ async def fetch_professores(sigla, base_url, db_manager, progress_callback=None)
                         "slug": slug,
                         "url_final": f"{base_url}/portfolio/pessoas/{slug}",
                     })
-            
+
             log(f"[{sigla}] [{len(professores)}/{total}] - professores coletados")
             if progress_callback:
                 progress_callback(len(professores), total)
 
             if len(professores) >= total:
                 break
-            
+
             start += length_returned
             await asyncio.sleep(0.05)
 
@@ -70,11 +198,9 @@ async def fetch_professores(sigla, base_url, db_manager, progress_callback=None)
         db_manager.save_professores(sigla, professores)
     return professores
 
-async def _fetch_detail(session, detail_url, p):
-    """Função auxiliar para buscar o detalhe de um único professor.
 
-    Implementa retry simples em caso de 429 (rate limit) e registra o tempo total.
-    """
+async def _fetch_detail(session, detail_url, p):
+    """Busca o detalhe de um único professor."""
     slug = p["slug"]
     start_time = time.perf_counter()
 
@@ -85,7 +211,6 @@ async def _fetch_detail(session, detail_url, p):
         try:
             async with session.get(f"{detail_url}/{slug}", headers=config.DEFAULT_HEADERS, ssl=False) as resp:
                 if resp.status == 429:
-                    # Rate limit; respeita Retry-After se presente
                     retry_after = resp.headers.get("Retry-After")
                     delay = float(retry_after) if retry_after and retry_after.isdigit() else backoff_base * attempt
                     log(f"[{p.get('sigla')}] 429 rate limit para {slug} (tentativa {attempt}/{max_retries}), aguardando {delay:.1f}s")
@@ -101,7 +226,6 @@ async def _fetch_detail(session, detail_url, p):
                 return slug, p, data, elapsed
 
         except Exception as e:
-            # Em caso de exceções de rede, tenta novamente até max_retries
             if attempt == max_retries:
                 elapsed = time.perf_counter() - start_time
                 return slug, p, {"erro": str(e)}, elapsed
@@ -109,6 +233,7 @@ async def _fetch_detail(session, detail_url, p):
 
     elapsed = time.perf_counter() - start_time
     return slug, p, {"erro": "Max retries exceeded"}, elapsed
+
 
 async def fetch_detalhes(sigla, base_url, uf, professores, db_manager, progress_callback=None, progress_callback_art=None):
     """Busca os detalhes (TCCs, artigos e projetos) para uma lista de professores."""
@@ -131,29 +256,48 @@ async def fetch_detalhes(sigla, base_url, uf, professores, db_manager, progress_
 
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [_fetch_detail(session, detail_url, {**p, "sigla": sigla}) for p in professores]
-        
+
         for coro in asyncio.as_completed(tasks):
             slug, prof, data, elapsed = await coro
             completed += 1
-            
+
+            if not isinstance(data, dict):
+                log(f"[{sigla}] detalhe inválido para {slug}: {data}")
+                if progress_callback:
+                    progress_callback(completed, total)
+                continue
+
             log(f"[{sigla}] [{completed}/{total}] - {slug} -> {elapsed:.2f}s")
             if progress_callback:
                 progress_callback(completed, total)
+
+            professor_id = db_manager.get_professor_id(sigla, slug)
+            if professor_id is None:
+                log(f"[{sigla}] professor_id não encontrado para slug={slug}; registros desse professor serão ignorados.")
+                continue
 
             tccs_para_salvar = []
             artigos_para_salvar = []
             projetos_para_salvar = []
 
             # orientações / TCCs
-            outra_producao = data.get("outraProducao", {})
+            outra_producao = (data or {}).get("outraProducao") or {}
             if isinstance(outra_producao, dict) and "orientacoesConcluidas" in outra_producao:
                 for item in outra_producao.get("orientacoesConcluidas", []):
+                    if not isinstance(item, dict):
+                        continue
+
                     for trabalho in item.get("outrasOrientacoesConcluidas", []):
-                        dados_basicos = trabalho.get("dadosBasicosDeOutrasOrientacoesConcluidas", {})
-                        if dados_basicos.get("natureza") != "TRABALHO_DE_CONCLUSAO_DE_CURSO_GRADUACAO":
+                        if not isinstance(trabalho, dict):
                             continue
 
-                        detalhamento = trabalho.get("detalhamentoDeOutrasOrientacoesConcluidas", {})
+                        dados_basicos = trabalho.get("dadosBasicosDeOutrasOrientacoesConcluidas") or {}
+                        detalhamento = trabalho.get("detalhamentoDeOutrasOrientacoesConcluidas") or {}
+
+                        natureza = (dados_basicos.get("natureza") or "").upper()
+                        if "TRABALHO_DE_CONCLUSAO" not in natureza:
+                            continue
+
                         nome_professor = clean_value(prof.get("nome"))
                         autores = clean_value(detalhamento.get("nomeDoOrientado"))
                         if nome_professor:
@@ -163,90 +307,121 @@ async def fetch_detalhes(sigla, base_url, uf, professores, db_manager, progress_
                         info_add = trabalho.get("informacoesAdicionais") or {}
 
                         tccs_para_salvar.append((
-                            slug, nome_professor, prof.get("sigla"),
-                            clean_value(detalhamento.get("nomeDaInstituicao")), uf, clean_value(prof.get("campus")),
-                            clean_value(dados_basicos.get("ano")), clean_value(detalhamento.get("nomeDoCurso")),
-                            autores, clean_value(dados_basicos.get("titulo")),
+                            professor_id,
+                            slug,
+                            nome_professor,
+                            prof.get("sigla"),
+                            clean_value(detalhamento.get("nomeDaInstituicao")),
+                            uf,
+                            clean_value(prof.get("campus")),
+                            clean_value(dados_basicos.get("ano")),
+                            clean_value(detalhamento.get("nomeDoCurso")),
+                            autores,
+                            clean_value(dados_basicos.get("titulo") or detalhamento.get("titulo")),
                             clean_value(info_add.get("descricaoInformacoesAdicionais")),
                             clean_value(palavras.get("palavrasChaves"))
                         ))
 
             # artigos científicos
-            prodbib = data.get("producaoBibliografica", {})
+            prodbib = (data or {}).get("producaoBibliografica") or {}
             if isinstance(prodbib, dict):
                 for bloco in prodbib.get("artigosPublicados", []):
+                    if not isinstance(bloco, dict):
+                        continue
+
                     for art in bloco.get("artigoPublicado", []):
-                        dados = art.get("dadosBasicosDoArtigo", {})
+                        if not isinstance(art, dict):
+                            continue
+
+                        dados = art.get("dadosBasicosDoArtigo") or {}
                         titulo_art = dados.get("tituloDoArtigo") or dados.get("titulo")
                         ano_art = dados.get("anoDoArtigo") or dados.get("ano")
                         palavras = art.get("palavrasChave") or {}
-                        journal = art.get("detalhamentoDoArtigo", {}).get("tituloDoPeriodicoOuRevista")
+                        detalhamento_art = art.get("detalhamentoDoArtigo") or {}
+                        journal = detalhamento_art.get("tituloDoPeriodicoOuRevista")
                         doi = dados.get("doi")
                         nome_professor = clean_value(prof.get("nome"))
 
                         if titulo_art:
                             artigos_para_salvar.append((
-                                slug, nome_professor, prof.get("sigla"),
-                                clean_value(ano_art), clean_value(titulo_art),
-                                clean_value(journal), clean_value(doi),
+                                professor_id,
+                                slug,
+                                nome_professor,
+                                prof.get("sigla"),
+                                clean_value(ano_art),
+                                clean_value(titulo_art),
+                                clean_value(journal),
+                                clean_value(doi),
                                 clean_value(palavras.get("palavrasChaves"))
                             ))
 
-# projetos de pesquisa (aparece em dadosGerais/atuacoesProfissionais)
-                global _projetos_debug_logged
-                dados_gerais = data.get("dadosGerais", {}) or {}
-                atuacoes = dados_gerais.get("atuacoesProfissionais", {}).get("atuacaoProfissional", [])
+            # projetos de pesquisa
+            global _projetos_debug_logged
+            dados_gerais = (data or {}).get("dadosGerais") or {}
+            atuacoes_prof = dados_gerais.get("atuacoesProfissionais") or {}
+            atuacoes = atuacoes_prof.get("atuacaoProfissional") or []
 
-                if not _projetos_debug_logged:
-                    if not atuacoes:
-                        log(f"[{sigla}] dadosGerais/atuacoesProfissionais ausente ou vazio")
-                    else:
-                        log(f"[{sigla}] encontrado dadosGerais/atuacoesProfissionais com {len(atuacoes)} entradas")
-                    _projetos_debug_logged = True
+            if not _projetos_debug_logged:
+                if not atuacoes:
+                    log(f"[{sigla}] dadosGerais/atuacoesProfissionais ausente ou vazio")
+                else:
+                    log(f"[{sigla}] encontrado dadosGerais/atuacoesProfissionais com {len(atuacoes)} entradas")
+                _projetos_debug_logged = True
 
-                for atuacao in atuacoes:
-                    for atividade in atuacao.get("atividadesDeParticipacaoEmProjeto", []):
-                        for participacao in atividade.get("participacaoEmProjeto", []):
-                            for proj in participacao.get("projetoDePesquisa", []):
-                                titulo_proj = proj.get("nomeDoProjeto") or proj.get("nomeDoProjetoIngles")
-                                descricao = proj.get("descricaoDoProjeto") or proj.get("descricaoDoProjetoIngles")
-                                natureza = proj.get("natureza")
+            for atuacao in atuacoes:
+                if not isinstance(atuacao, dict):
+                    continue
 
-                                # Monta a equipe (lista de integrantes)
-                                equipe = []
-                                equipe_obj = proj.get("equipeDoProjeto") or {}
-                                for integrante in (equipe_obj.get("integrantesDoProjeto") or []):
-                                    if not isinstance(integrante, dict):
-                                        continue
-                                    nome = integrante.get("nomeParaCitacao") or integrante.get("nomeCompleto")
-                                    if not nome:
-                                        continue
-                                    if str(integrante.get("flagResponsavel") or "").upper() in ("SIM", "S", "TRUE", "1"):
-                                        nome = f"{nome} (Responsável)"
-                                    equipe.append(nome)
-                                equipe_str = "; ".join(equipe)
+                for atividade in atuacao.get("atividadesDeParticipacaoEmProjeto", []):
+                    if not isinstance(atividade, dict):
+                        continue
 
-                                # Monta financiadores
-                                financiadores = []
-                                for f in (proj.get("financiadoresDoProjeto") or []):
-                                    if isinstance(f, dict):
-                                        nome = f.get("nomeFinanciador") or f.get("nome") or f.get("instituicao")
-                                        if not nome:
-                                            nome = "; ".join(str(v) for v in f.values() if v)
-                                        if nome:
-                                            financiadores.append(nome)
-                                    else:
-                                        financiadores.append(str(f))
-                                financiadores_str = "; ".join(financiadores)
+                    for participacao in atividade.get("participacaoEmProjeto", []):
+                        if not isinstance(participacao, dict):
+                            continue
 
-                                nome_professor = clean_value(prof.get("nome"))
+                        for proj in participacao.get("projetoDePesquisa", []):
+                            if not isinstance(proj, dict):
+                                continue
 
-                                if titulo_proj:
-                                    projetos_para_salvar.append((
-                                        slug, nome_professor, prof.get("sigla"),
-                                        clean_value(titulo_proj), clean_value(descricao),
-                                        clean_value(natureza), clean_value(equipe_str), clean_value(financiadores_str)
-                                    ))
+                            titulo_proj = proj.get("nomeDoProjeto") or proj.get("nomeDoProjetoIngles")
+                            descricao = proj.get("descricaoDoProjeto") or proj.get("descricaoDoProjetoIngles")
+                            natureza = proj.get("natureza")
+
+                            equipe = []
+                            equipe_obj = proj.get("equipeDoProjeto") or {}
+                            for integrante in (equipe_obj.get("integrantesDoProjeto") or []):
+                                if not isinstance(integrante, dict):
+                                    continue
+                                nome = integrante.get("nomeParaCitacao") or integrante.get("nomeCompleto")
+                                if not nome:
+                                    continue
+                                if str(integrante.get("flagResponsavel") or "").upper() in ("SIM", "S", "TRUE", "1"):
+                                    nome = f"{nome} (Responsável)"
+                                equipe.append(nome)
+                            equipe_str = "; ".join(equipe)
+
+                            financiadores_str = clean_value(
+                                extrair_financiadores_do_projeto(proj, participacao)
+                            )
+
+                            nome_professor = clean_value(prof.get("nome"))
+
+                            if not eh_projeto_instituto_federal(atuacao, atividade, participacao, proj):
+                                continue
+
+                            if titulo_proj:
+                                projetos_para_salvar.append((
+                                    professor_id,
+                                    slug,
+                                    nome_professor,
+                                    prof.get("sigla"),
+                                    clean_value(titulo_proj),
+                                    clean_value(descricao),
+                                    clean_value(natureza),
+                                    clean_value(equipe_str),
+                                    clean_value(financiadores_str)
+                                ))
 
             if tccs_para_salvar:
                 db_manager.save_tccs(tccs_para_salvar)
@@ -260,19 +435,20 @@ async def fetch_detalhes(sigla, base_url, uf, professores, db_manager, progress_
                 db_manager.save_projetos(projetos_para_salvar)
                 proj_count += len(projetos_para_salvar)
                 log(f"[{sigla}] {len(projetos_para_salvar)} projetos salvos")
-    
+
     log(f"[{sigla}] Todos os TCCs salvos.")
     if progress_callback_art:
         log(f"[{sigla}] Total de artigos coletados: {art_count}")
         log(f"[{sigla}] Total de projetos coletados: {proj_count}")
 
+
 async def run_for_institution(sigla, base_url, uf, db_manager, callbacks):
     """Executa o pipeline completo para uma instituição."""
     log(f"=== {sigla}: Iniciando coleta ===")
-    
+
     professores = await fetch_professores(sigla, base_url, db_manager, callbacks.get('prof_progress'))
     log(f"[{sigla}] Total de professores encontrados: {len(professores)}")
-    
+
     await fetch_detalhes(sigla, base_url, uf, professores, db_manager, callbacks.get('det_progress'), callbacks.get('art_progress'))
-    
+
     log(f"=== {sigla}: Coleta concluída ===")
