@@ -20,3 +20,6 @@ __pycache__/
 #Ignorar arquivos de saida .parquet
 scripts/interface/*.parquet
 log_tccs_rejeitados.csv
+
+#arquivos de teste
+scripts/testes/*.csv
