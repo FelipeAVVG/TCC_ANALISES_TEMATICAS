@@ -1,4 +1,4 @@
-# tcc_ana_luisa_caixeta_2025_02
+# TCC_ANALISSES_TEMATICAS
 
 scripts/
 │
