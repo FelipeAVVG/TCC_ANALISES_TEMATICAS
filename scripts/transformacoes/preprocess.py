@@ -11,7 +11,7 @@ Regras aplicadas:
 - TCCs: curso + título + resumo + palavras-chave
 - Artigos: título + resumo + palavras-chave
 - Projetos: título + descrição
-- TCCs: teste iterativo de 10 a 20 tópicos
+- TCCs: 20 tópicos
 - Artigos: 30 tópicos
 - Projetos: 30 tópicos
 """
@@ -34,14 +34,14 @@ OUTPUT_ARTIGO = r"scripts\interface\artigos_dashboard.parquet"
 OUTPUT_PROJETO = r"scripts\interface\projetos_dashboard.parquet"
 TOPIC_DIAGNOSTICS_FILENAME = r"scripts\interface\diagnostico_topicos.csv"
 
-TCC_TOPIC_RANGE = range(10, 21)
-ARTIGO_N_TOPICS = 30
-PROJETO_N_TOPICS = 30
+TCC_TOPIC_RANGE = 22
+ARTIGO_N_TOPICS = 9
+PROJETO_N_TOPICS = 9
 
 IGNORED_WORDS = set([
     "apos", "atraves", "assim", "como", "com", "de", "da", "do", "dos", "das",
     "em", "e", "entre", "na", "no", "ou", "por", "sob", "sobre", "partir",
-    "nao", "segundo", "dentro", "tendo", "ano", "anos",
+    "nao", "segundo", "dentro", "tendo", "ano", "anos", 
     "aluno", "alunos", "brasileira", "ciencia", "coorientacao", "faculdade",
     "if", "ifb", "ifba", "ifg", "ifgo", "instituicao", "instituto", "orientador",
     "pessoa", "professor", "sigla", "universidade", "tecnico", "publica", "federal",
@@ -71,7 +71,9 @@ IGNORED_WORDS = set([
     "pernambuco", "piaui", "porto", "rio", "rondonia", "roraima", "salvador",
     "santa", "sergipe", "tocantins", "municipio", "brasil", "brasilia", "campus",
     "brasileiro", "sao", "paulo", "uruacu", "sul", "sudeste", "centrooeste",
-    "norte", "nordeste", "centro", "oeste", "estadual"
+    "norte", "nordeste", "centro", "oeste", "estadual", "sera", "and", "the", "from",
+    "serao", "agua", "serao","plantas", "vida", "brazil", "analysis", "revisao", "edital",
+    "meio", "avaliar", "inclusao", "extenção", "with", "activity", "qualidade", "synthesis"
 ])
 
 def setup_nltk():
@@ -308,7 +310,7 @@ def processar_tipo(df_tipo, tipo):
         return df_tipo, []
 
     if tipo == "TCC":
-        topic_candidates = list(TCC_TOPIC_RANGE)
+        topic_candidates = [TCC_TOPIC_RANGE]
         print(f"   - Testando TCCs com tópicos de {min(topic_candidates)} a {max(topic_candidates)}.")
     elif tipo == "Artigo":
         topic_candidates = [ARTIGO_N_TOPICS]
