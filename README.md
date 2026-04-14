@@ -1,4 +1,4 @@
-# tcc_ana_luisa_caixeta_2025_02
+# TCC_ANALISSES_TEMATICAS
 
 scripts/
 │
@@ -15,6 +15,6 @@ scripts/
 
 ## Novidades
 
-- O scraper agora coleta também **artigos científicos** associados a cada professor, além dos TCCs. Os registros são salvos em uma tabela `artigos` no banco de dados.
+- O scraper agora coleta também **artigos científicos e Projetos academicos** associados a cada professor, além dos TCCs. Os registros são salvos em uma tabela `artigos` e a tabela `projetos` no banco de dados.
 - O pipeline de transformação (`star_schema.py` e `preprocess.py`) trata esse novo conjunto de dados e o dashboard do Streamlit inclui filtro por tipo de registro (TCC/Artigo).
 
