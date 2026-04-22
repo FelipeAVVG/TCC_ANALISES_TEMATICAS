@@ -14,13 +14,11 @@ def exibir(df):
     df_temas = df_temas.sort_values('qtd_tccs', ascending=False)
     df_temas['tema_simples'] = df_temas['tema'].apply(simplificar_topico)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        metric_bold("Total de Temas", len(df_temas))
-    with col2:
         tema_top = df_temas.iloc[0]['tema_simples'] if not df_temas.empty else 'N/A'
         metric_bold("Tema Mais Frequente", tema_top)
-    with col3:
+    with col2:
         metric_bold("Média TCCs/Tema", f"{df_temas['qtd_tccs'].mean():.1f}")
 
     st.markdown("---")

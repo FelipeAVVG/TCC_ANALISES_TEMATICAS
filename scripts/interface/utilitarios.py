@@ -64,8 +64,8 @@ def filtrar_dados(df, instituicoes, anos, topicos, cursos, tipos=None):
     if tipos:
         df_f = df_f[df_f['tipo'].isin(tipos)]
 
-    # 2. Filtro de Anos
-    if anos:
+# 2. Filtro de Anos
+    if anos and anos != (0, 9999) and 'ano' in df_f.columns and df_f['ano'].notna().any():
         df_f = df_f[df_f['ano'].between(anos[0], anos[1])]
 
     # 3. Filtro de Tópicos

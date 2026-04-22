@@ -1,11 +1,11 @@
+
 # -*- coding: utf-8 -*-
 import streamlit as st
-
-# Importações dos módulos locais (arquivos dentro de scripts/interface/)
 from dados import carregar_dados
 from utilitarios import filtrar_dados
 from estilo import aplicar_estilo
 
+# Módulos TCC (originais, sem alteração)
 import visao_geral
 import orientadores
 import instituicoes
@@ -13,7 +13,20 @@ import tematicas
 import busca_avancada
 import tendencias
 
-# Configuração da página
+# Módulos Artigos
+import artigos_visao_geral
+import artigos_tematicas
+import artigos_instituicoes
+import artigos_busca
+import artigos_tendencias
+
+# Módulos Projetos (reusa os de artigos com o mesmo df)
+import projetos_visao_geral
+import projetos_tematicas
+import projetos_instituicoes
+import projetos_busca
+import projetos_tendencias
+
 st.set_page_config(
     page_title="Panorama Temático de TCCs",
     page_icon="📚",
@@ -21,44 +34,78 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Aplicar o estilo que foi definido no script estilo.py
 aplicar_estilo()
 
-# Carregar os dados usando a função presente no dados.py
-with st.spinner("🚀 Carregando o projeto e preparando os dados..."):
-    df = carregar_dados()
 
-# Definindo o header
-st.markdown("""
+# ── NAVEGAÇÃO PRINCIPAL ───────────────────────────────────────────────────────
+tipo_selecionado = st.segmented_control(
+    label="Base de dados",
+    options=["📚 TCCs", "🔬 Artigos", "🗂️ Projetos", "📊 Comparações", "🗺️ Mapa"],
+    default="📚 TCCs",
+    label_visibility="collapsed"
+)
+
+
+
+PARQUET_MAP = {
+    "📚 TCCs":     "tccs_dashboard.parquet",
+    "🔬 Artigos":  "artigos_dashboard.parquet",
+    "🗂️ Projetos": "projetos_dashboard.parquet",
+}
+
+with st.spinner("🚀 Carregando o projeto e preparando os dados..."):
+    if tipo_selecionado in ["📊 Comparações", "🗺️ Mapa"]:
+        df_tcc  = carregar_dados("tccs_dashboard.parquet")
+        df_art  = carregar_dados("artigos_dashboard.parquet")
+        df_proj = carregar_dados("projetos_dashboard.parquet")
+        df = df_tcc
+    else:
+        df = carregar_dados(PARQUET_MAP[tipo_selecionado])
+
+# ── BANNER ────────────────────────────────────────────────────────────────────
+TITULOS = {
+    "📚 TCCs":         ("Panorama Temático de TCCs na Rede Federal",      "Análise Inteligente de Trabalhos de Conclusão de Curso"),
+    "🔬 Artigos":      ("Panorama de Artigos Científicos na Rede Federal", "Análise Inteligente de Artigos Científicos"),
+    "🗂️ Projetos":     ("Panorama de Projetos Acadêmicos na Rede Federal", "Análise Inteligente de Projetos Acadêmicos"),
+    "📊 Comparações":  ("Comparações entre TCCs, Artigos e Projetos",      "Análise Comparativa da Produção Acadêmica na Rede Federal"),
+    "🗺️ Mapa": ("Mapa de Produção Acadêmica da Rede Federal", "Distribuição Geográfica por Estado"),
+}
+titulo, subtitulo = TITULOS[tipo_selecionado]
+st.markdown(f"""
 <div class="main-header">
-    <h1>Panorama Temático de TCCs na Rede Federal</h1>
-    <p style='margin: 5px 0 0 0; font-size: 1.1em;'>Análise Inteligente de Trabalhos de Conclusão de Curso</p>
+    <h1>{titulo}</h1>
+    <p style='margin: 5px 0 0 0; font-size: 1.1em;'>{subtitulo}</p>
 </div>
 """, unsafe_allow_html=True)
 
-# Filtros adicionados no menu lateral
+# ── FILTROS LATERAIS ──────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
-    ano_min = int(df['ano'].min())
-    ano_max = int(df['ano'].max())
-    anos = st.slider("Período", min_value=ano_min, max_value=ano_max, value=(ano_min, ano_max))
     inst = st.multiselect("Instituições", options=sorted(df['instituicao'].dropna().unique()))
-    cursos = st.multiselect("Cursos", options=sorted(df['curso_unificado'].dropna().unique()))
     topicos = st.multiselect("Temas", options=sorted(df['nome_topico'].dropna().unique()))
-    tipos = st.multiselect("Tipo de registro", options=sorted(df['tipo'].dropna().unique()), default=sorted(df['tipo'].dropna().unique()))
 
-# Aplicar filtro utilizando a função filtrar_dados que foi definida no utilitarios.py
-df_filtrado = filtrar_dados(df, inst, anos, topicos, cursos, tipos)
+    anos = None
+    cursos = []
+    tipos = []
 
-# Caso não seja encontrado nenhum dado para o filtro feito deve ser apresentado uma mensagem
+    if tipo_selecionado != "🗂️ Projetos":
+        ano_min = int(df['ano'].min())
+        ano_max = int(df['ano'].max())
+        anos = st.slider("Período", min_value=ano_min, max_value=ano_max, value=(ano_min, ano_max))
+
+    if tipo_selecionado == "📚 TCCs":
+        cursos = st.multiselect("Cursos", options=sorted(df['curso_unificado'].dropna().unique()))
+        tipos = st.multiselect("Tipo de registro", options=sorted(df['tipo'].dropna().unique()), default=sorted(df['tipo'].dropna().unique()))
+# ── FILTRAR ───────────────────────────────────────────────────────────────────
+df_filtrado = filtrar_dados(df, inst, anos if anos else (0, 9999), topicos, cursos, tipos)
+
 if df_filtrado.empty:
     st.warning("Nenhum dado encontrado para os filtros selecionados. Ajuste os filtros na lateral.")
     st.stop()
 
-# Bloco de CSS customizado para estilizar as abas do menu
+# ── CSS ABAS ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Estiliza cada aba individualmente */
     button[data-baseweb="tab"] {
         font-weight: bold;
         padding: 10px 15px;
@@ -70,36 +117,41 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Menu superior referente as visualizações
-abas = st.tabs([
-    "Visão Geral",
-    "Orientadores",
-    "Instituições",
-    "Temáticas",
-    "Busca Avançada",
-    "Tendências"
-])
+# ── ABAS POR TIPO ─────────────────────────────────────────────────────────────
+if tipo_selecionado == "📚 TCCs":
+    abas = st.tabs(["Visão Geral", "Orientadores", "Instituições", "Temáticas", "Busca Avançada", "Tendências"])
+    with abas[0]: visao_geral.exibir(df_filtrado)
+    with abas[1]: orientadores.exibir(df_filtrado)
+    with abas[2]: instituicoes.exibir(df_filtrado)
+    with abas[3]: tematicas.exibir(df_filtrado)
+    with abas[4]: busca_avancada.exibir(df_filtrado)
+    with abas[5]: tendencias.exibir(df_filtrado)
 
-# Renderizar cada aba seguindo os dados filtrados
-with abas[0]:
-    visao_geral.exibir(df_filtrado)
+elif tipo_selecionado == "🔬 Artigos":
+    abas = st.tabs(["Visão Geral", "Temáticas", "Instituições", "Busca", "Tendências"])
+    with abas[0]: artigos_visao_geral.exibir(df_filtrado)
+    with abas[1]: artigos_tematicas.exibir(df_filtrado)
+    with abas[2]: artigos_instituicoes.exibir(df_filtrado)
+    with abas[3]: artigos_busca.exibir(df_filtrado)
+    with abas[4]: artigos_tendencias.exibir(df_filtrado)
 
-with abas[1]:
-    orientadores.exibir(df_filtrado)
+elif tipo_selecionado == "🗂️ Projetos":
+    abas = st.tabs(["Visão Geral", "Temáticas", "Instituições", "Busca", "Tendências"])
+    with abas[0]: projetos_visao_geral.exibir(df_filtrado)
+    with abas[1]: projetos_tematicas.exibir(df_filtrado)
+    with abas[2]: projetos_instituicoes.exibir(df_filtrado)
+    with abas[3]: projetos_busca.exibir(df_filtrado)
+    with abas[4]: projetos_tendencias.exibir(df_filtrado)
 
-with abas[2]:
-    instituicoes.exibir(df_filtrado)
+elif tipo_selecionado == "📊 Comparações":
+    import comparacoes
+    comparacoes.exibir(df_tcc, df_art, df_proj)
 
-with abas[3]:
-    tematicas.exibir(df_filtrado)
+elif tipo_selecionado == "🗺️ Mapa":
+    import mapa
+    mapa.exibir(df_tcc, df_art, df_proj)
 
-with abas[4]:
-    busca_avancada.exibir(df_filtrado)
-
-with abas[5]:
-    tendencias.exibir(df_filtrado)
-
-# Rodapé
+# ── RODAPÉ ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px;'>
