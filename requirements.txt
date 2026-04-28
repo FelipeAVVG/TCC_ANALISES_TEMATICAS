@@ -11,3 +11,5 @@ sqlalchemy
 pyarrow
 unidecode>=1.3.6
 numpy
+requests
+gdown

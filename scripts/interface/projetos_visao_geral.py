@@ -17,10 +17,8 @@ def exibir(df):
 
     st.markdown("---")
 
-    col_left, col_right = st.columns(2)
-    with col_left:
-# Distribuição por natureza
-        st.subheader("Distribuição por Natureza do Projeto")
+    # Distribuição por natureza
+    st.subheader("Distribuição por Natureza do Projeto")
     df_nat = df['natureza'].value_counts().reset_index()
     df_nat.columns = ['Natureza', 'Projetos']
 
@@ -51,10 +49,6 @@ def exibir(df):
     fig_empilhado.update_layout(height=450, xaxis_tickangle=-30, xaxis_title="", yaxis_title="Quantidade")
     st.plotly_chart(fig_empilhado, config={'responsive': True}, key="pvg_inst_nat", use_container_width=True)
 
-    col_left, col_right = st.columns(2)
-    with col_left:
-        st.subheader("Produção Anual de Projetos")
-
     st.markdown("---")
 
     col1, col2 = st.columns(2)
@@ -75,5 +69,5 @@ def exibir(df):
     st.markdown("---")
     st.subheader("Tabela de Projetos")
     st.markdown(f"**Total exibido:** {len(df):,} registros".replace(",", "."))
-    cols = [c for c in ['titulo', 'autores', 'ano', 'instituicao', 'veiculo', 'nome_topico'] if c in df.columns]
-    st.dataframe(df[cols].sort_values('ano', ascending=False), hide_index=True, use_container_width=True)
+    cols = [c for c in ['titulo', 'autores', 'instituicao', 'natureza', 'nome_topico'] if c in df.columns]
+    st.dataframe(df[cols], hide_index=True, use_container_width=True)

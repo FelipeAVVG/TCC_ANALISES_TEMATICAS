@@ -81,34 +81,40 @@ def exibir(df_tcc, df_art, df_proj):
 # ── RANKING DE IFs POR TIPO ───────────────────────────────────────────────
     st.subheader("Ranking de Instituições por Tipo de Produção")
 
-    top_tcc = df_tcc['instituicao'].value_counts().head(10).reset_index()
-    top_tcc.columns = ['Instituição', 'Quantidade']
-    top_tcc['Tipo'] = 'TCCs'
+    col1, col2, col3 = st.columns(3)
 
-    top_art = df_art['instituicao'].value_counts().head(10).reset_index()
-    top_art.columns = ['Instituição', 'Quantidade']
-    top_art['Tipo'] = 'Artigos'
+    with col1:
+        st.markdown("**📚 Top 10 — TCCs**")
+        top_tcc = df_tcc['instituicao'].value_counts().head(10).reset_index()
+        top_tcc.columns = ['Instituição', 'Quantidade']
+        fig1 = px.bar(top_tcc, x='Instituição', y='Quantidade',
+                      color_discrete_sequence=['#4A90E2'], text='Quantidade')
+        fig1.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig1.update_layout(height=400, showlegend=False,
+                           xaxis_tickangle=-30, xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig1, config={'responsive': True}, key="cmp_rank_tcc", use_container_width=True)
 
-    top_proj = df_proj['instituicao'].value_counts().head(10).reset_index()
-    top_proj.columns = ['Instituição', 'Quantidade']
-    top_proj['Tipo'] = 'Projetos'
+    with col2:
+        st.markdown("**🔬 Top 10 — Artigos**")
+        top_art = df_art['instituicao'].value_counts().head(10).reset_index()
+        top_art.columns = ['Instituição', 'Quantidade']
+        fig2 = px.bar(top_art, x='Instituição', y='Quantidade',
+                      color_discrete_sequence=['#00CC96'], text='Quantidade')
+        fig2.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig2.update_layout(height=400, showlegend=False,
+                           xaxis_tickangle=-30, xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig2, config={'responsive': True}, key="cmp_rank_art", use_container_width=True)
 
-    for label, df_rank, key, cor in [
-        ("📚 Top 10 — TCCs",     top_tcc,  "cmp_rank_tcc",  '#4A90E2'),
-        ("🔬 Top 10 — Artigos",  top_art,  "cmp_rank_art",  '#00CC96'),
-        ("🗂️ Top 10 — Projetos", top_proj, "cmp_rank_proj", '#FFA15A'),
-    ]:
-        st.markdown(f"**{label}**")
-        fig = px.bar(df_rank, x='Quantidade', y='Instituição', orientation='h',
-                     color_discrete_sequence=[cor], text='Quantidade')
-        fig.update_traces(textposition='outside')
-        fig.update_layout(height=400, showlegend=False,
-                          yaxis={'categoryorder': 'total ascending'},
-                          margin=dict(l=200, r=50),
-                          xaxis_title="Quantidade")
-        st.plotly_chart(fig, config={'responsive': True}, key=key, use_container_width=True)
-
-    st.markdown("---")
+    with col3:
+        st.markdown("**🗂️ Top 10 — Projetos**")
+        top_proj = df_proj['instituicao'].value_counts().head(10).reset_index()
+        top_proj.columns = ['Instituição', 'Quantidade']
+        fig3 = px.bar(top_proj, x='Instituição', y='Quantidade',
+                      color_discrete_sequence=['#FFA15A'], text='Quantidade')
+        fig3.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig3.update_layout(height=400, showlegend=False,
+                           xaxis_tickangle=-30, xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig3, config={'responsive': True}, key="cmp_rank_proj", use_container_width=True)
 
     # ── COMPARAÇÃO POR IF ─────────────────────────────────────────────────────
     st.subheader("Comparação por Instituição")
