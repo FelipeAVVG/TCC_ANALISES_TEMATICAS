@@ -59,3 +59,9 @@ def carregar_dados(nome_arquivo="tccs_dashboard.parquet"):
     except Exception as e:
         st.error(f"Erro ao carregar dados: {e}")
         st.stop()
+
+    except Exception as e:
+        import traceback
+        st.error(f"Erro ao carregar dados: {e}")
+        st.error(traceback.format_exc())
+        st.stop()
