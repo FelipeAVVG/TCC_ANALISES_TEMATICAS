@@ -64,12 +64,19 @@ PARQUET_MAP = {
 
 with st.spinner("🚀 Carregando o projeto e preparando os dados..."):
     if tipo_selecionado == "📊 Dados Gerais":
-        df_tcc  = carregar_dados("tccs_dashboard.parquet")
-        df_art  = carregar_dados("artigos_dashboard.parquet")
-        df_proj = carregar_dados("projetos_dashboard.parquet")
+        df_tcc = carregar_dados("tccs_dashboard.parquet")
         df = df_tcc
     else:
         df = carregar_dados(PARQUET_MAP[tipo_selecionado])
+
+# Carrega artigos e projetos só quando Dados Gerais for selecionado e necessário
+df_art  = None
+df_proj = None
+if tipo_selecionado == "📊 Dados Gerais":
+    with st.spinner("⬇️ Carregando artigos..."):
+        df_art = carregar_dados("artigos_dashboard.parquet")
+    with st.spinner("⬇️ Carregando projetos..."):
+        df_proj = carregar_dados("projetos_dashboard.parquet")
 
 # ── BANNER ────────────────────────────────────────────────────────────────────
 TITULOS = {
