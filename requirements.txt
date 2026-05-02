@@ -1,3 +1,19 @@
+# aiohttp>=3.9.0
+# aiofiles==23.2.1
+# pandas
+# scikit-learn
+# matplotlib
+# seaborn==0.12.2
+# plotly==5.24.1
+# wordcloud
+# streamlit
+# sqlalchemy
+# pyarrow
+# unidecode>=1.3.6
+# numpy
+# requests
+# gdown
+
 aiohttp>=3.9.0
 aiofiles==23.2.1
 pandas
@@ -6,10 +22,12 @@ matplotlib
 seaborn==0.12.2
 plotly==5.24.1
 wordcloud
-streamlit
+streamlit==1.41.0
 sqlalchemy
 pyarrow
 unidecode>=1.3.6
 numpy
 requests
 gdown
+rapidfuzz
+nltk
