@@ -95,16 +95,19 @@ def exibir(df):
     st.markdown("---")
 
     col5, col6 = st.columns(2)
+# Linha 3 — Outra
     df_nat = df[df['natureza'] == 'OUTRA']
     if not df_nat.empty:
         top_nat = df_nat['autores'].dropna().value_counts().head(10).reset_index()
         top_nat.columns = ['Servidor', 'Projetos']
-        with col5:
-            st.markdown("**Outra**")
-            fig = px.bar(top_nat, x='Servidor', y='Projetos', color_discrete_sequence=['#8B1A1A'], text='Projetos')
-            fig.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
-            fig.update_layout(height=380, showlegend=False, xaxis_tickangle=-30, xaxis_title="", yaxis_title="Projetos")
-            st.plotly_chart(fig, config={'responsive': True}, key="proj_srv_nat_OUTRA", use_container_width=True)
+        st.markdown("**Outra**")
+        fig = px.bar(top_nat, x='Servidor', y='Projetos',
+                     color_discrete_sequence=['#8B1A1A'], text='Projetos')
+        fig.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig.update_layout(height=380, showlegend=False,
+                          xaxis_tickangle=-30, xaxis_title="", yaxis_title="Projetos")
+        st.plotly_chart(fig, config={'responsive': True},
+                        key="proj_srv_nat_OUTRA", use_container_width=True)
 
     st.markdown("---")
     st.subheader("Ranking Completo de Servidores")

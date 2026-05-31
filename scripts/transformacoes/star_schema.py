@@ -223,8 +223,8 @@ def main():
         df_proj["natureza"] = df_proj.get("natureza", pd.Series([""] * len(df_proj))).astype(str).str.strip()
         df_proj["equipe"] = df_proj.get("equipe", pd.Series([""] * len(df_proj))).astype(str).str.strip()
         df_proj["financiadores"] = df_proj.get("financiadores", pd.Series([""] * len(df_proj))).astype(str).str.strip()
-        df_proj["data_inicio"] = df_proj.get("data_inicio", pd.Series([""] * len(df_proj))).astype(str).str.strip()
-        df_proj["data_fim"] = df_proj.get("data_fim", pd.Series([""] * len(df_proj))).astype(str).str.strip()
+        df_proj["data_inicio"] = pd.to_numeric(df_proj.get("data_inicio", pd.Series([None] * len(df_proj))), errors='coerce')
+        df_proj["data_fim"] = pd.to_numeric(df_proj.get("data_fim", pd.Series([None] * len(df_proj))), errors='coerce')
         df_proj["projeto_id"] = range(1, len(df_proj) + 1)
         fato_projeto = df_proj[[
             "projeto_id", "slug_professor", "nome_professor", "sigla",

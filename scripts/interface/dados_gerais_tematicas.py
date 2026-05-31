@@ -428,8 +428,32 @@ Quantidade:
             use_container_width=True
         )
 
+        st.markdown("---")
+        st.subheader("Tabela Consolidada por Tipo e Temática")
+        st.caption("Quantidade de registros por tipo e temática")
+
+        df_tcc_tab = df_tcc['nome_topico'].value_counts().reset_index()
+        df_tcc_tab.columns = ['Temática', 'Quantidade']
+        df_tcc_tab['Tipo'] = 'TCC'
+
+        df_art_tab = df_art['nome_topico'].value_counts().reset_index()
+        df_art_tab.columns = ['Temática', 'Quantidade']
+        df_art_tab['Tipo'] = 'Artigo'
+
+        df_proj_tab = df_proj['nome_topico'].value_counts().reset_index()
+        df_proj_tab.columns = ['Temática', 'Quantidade']
+        df_proj_tab['Tipo'] = 'Projeto'
+
+        df_consolidado = pd.concat([df_tcc_tab, df_art_tab, df_proj_tab])
+        df_consolidado['Temática'] = df_consolidado['Temática'].apply(limpar_prefixo)
+        df_consolidado = df_consolidado[['Tipo', 'Temática', 'Quantidade']].sort_values(
+            ['Tipo', 'Quantidade'], ascending=[True, False]
+        ).reset_index(drop=True)
+
+        st.dataframe(df_consolidado, hide_index=True, use_container_width=True, height=500)
+
     else:
 
-        st.info(
+     st.info(
             "Selecione ao menos um tipo."
         )

@@ -5,9 +5,9 @@ import os
 import gdown
 
 DRIVE_IDS = {
-    "tccs_dashboard.parquet":     "17VfHJdaBYLd1WHOWe9LuGhN19X-w6Bgb",
-    "projetos_dashboard.parquet": "1w3nSAvZhi7HpVquX1A4b2RwgHIBcON7v",
-    "artigos_dashboard.parquet":  "1X9GfMMfpugyYgwgck_VY9TPplHIPMViy",
+    "tccs_dashboard.parquet":     "1fyja63Bz8X7EbJp8zc28KvBxgzmxYu0f",
+    "projetos_dashboard.parquet": "1PkGNVM23qFDk02ZDKQrlS9hhkEbBp3a2",
+    "artigos_dashboard.parquet":  "1EA0bRWpNUm8CpXcci6i0QIVvxxtYda2I",
 }
 
 # =========================
@@ -26,11 +26,10 @@ COLUNAS_OBRIGATORIAS = {
         'nome_topico', 'orientador', 'tipo'
     ],
     "projetos_dashboard.parquet": [
-        'titulo', 'autores', 'instituicao',
-        'resumo', 'resumo_processado',
-        'nome_topico', 'tipo',
-        'ano_inicio', 'ano_fim'
-    ],
+    'titulo', 'autores', 'instituicao',
+    'resumo', 'resumo_processado',
+    'nome_topico', 'tipo', 'ano'
+],
 }
 
 
@@ -140,7 +139,9 @@ def carregar_dados(nome_arquivo="tccs_dashboard.parquet"):
                 df["ano"] = df["ano"].astype(int)
 
         elif nome_arquivo == "projetos_dashboard.parquet":
-            pass
+         if "data_inicio" in df.columns:
+            df["ano"] = pd.to_numeric(df["data_inicio"], errors="coerce")
+         df["ano"] = pd.to_numeric(df["ano"], errors="coerce")
 
         # -------------------------
         # RESULTADO FINAL

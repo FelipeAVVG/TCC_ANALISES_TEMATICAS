@@ -27,20 +27,26 @@ def exibir(df_tcc, df_art, df_proj):
 
     st.markdown("---")
 
-    # ── EVOLUÇÃO TEMPORAL ─────────────────────────────────────────────────────
+# ── EVOLUÇÃO TEMPORAL ─────────────────────────────────────────────────────
     st.subheader("Evolução Temporal da Produção")
-    df_tcc_ano  = df_tcc.groupby('ano').size().reset_index(name='count')
+    df_tcc_ano = df_tcc.groupby('ano').size().reset_index(name='count')
     df_tcc_ano['tipo'] = 'TCCs'
-    df_art_ano  = df_art.groupby('ano').size().reset_index(name='count')
+    df_art_ano = df_art.groupby('ano').size().reset_index(name='count')
     df_art_ano['tipo'] = 'Artigos'
-    df_tempo = pd.concat([df_tcc_ano, df_art_ano])
-    df_tempo = df_tempo[df_tempo['ano'] >= 1960]
-    fig_tempo = px.line(df_tempo, x='ano', y='count', color='tipo', markers=True)
+
+    frames = [df_tcc_ano, df_art_ano]
+    if df_proj['ano'].notna().any():
+        df_proj_ano = df_proj.dropna(subset=['ano']).groupby('ano').size().reset_index(name='count')
+        df_proj_ano['tipo'] = 'Projetos'
+        frames.append(df_proj_ano)
+
+    df_tempo = pd.concat(frames)
+    df_tempo = df_tempo[df_tempo['ano'] >= 1975]
+    fig_tempo = px.line(df_tempo, x='ano', y='count', color='tipo', markers=True,
+                        color_discrete_map={'TCCs': '#4A90E2', 'Artigos': '#00CC96', 'Projetos': '#FFA15A'},
+                        labels={'count': 'Quantidade', 'ano': 'Ano', 'tipo': 'Tipo'})
     fig_tempo.update_layout(height=400, hovermode='x unified')
     st.plotly_chart(fig_tempo, config={'responsive': True}, key="cmp_tempo", use_container_width=True)
-    st.caption("⚠️ Projetos não possuem dados de ano disponíveis.")
-
-    st.markdown("---")
 
 # ── RANKING DE IFs POR TIPO ───────────────────────────────────────────────
     st.subheader("Ranking de Instituições por Tipo de Produção")

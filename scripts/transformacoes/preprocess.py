@@ -338,7 +338,7 @@ def load_data_from_datamart(db_name):
                         p.projeto_id AS registro_id,
                         p.titulo,
                         p.descricao AS resumo,
-                        NULL AS ano,
+                        CAST(p.data_inicio AS INTEGER) AS ano,
                         COALESCE(i.sigla, p.sigla) AS instituicao,
                         NULL AS curso,
                         p.nome_professor AS autores,
@@ -358,7 +358,7 @@ def load_data_from_datamart(db_name):
                 df_proj = pd.DataFrame()
 
         print(f"   - {len(df_tcc)} registros de TCC carregados.")
-        if not df_art.empty:
+        if not df_art.empty: 
             print(f"   - {len(df_art)} registros de artigos carregados.")
         if not df_proj.empty:
             print(f"   - {len(df_proj)} registros de projetos carregados.")
