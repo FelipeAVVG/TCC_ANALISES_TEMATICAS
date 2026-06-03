@@ -11,17 +11,18 @@ def _preparar_datas(df):
 
     def extrair_ano(valor):
         if pd.isna(valor):
-            return pd.NA
+            return None
         m = re.search(r"(\d{4})", str(valor))
-        return int(m.group(1)) if m else pd.NA
+        return int(m.group(1)) if m else None
 
     if "data_inicio" not in df.columns:
-        df["data_inicio"] = pd.NA
+        df["data_inicio"] = None
     if "data_fim" not in df.columns:
-        df["data_fim"] = pd.NA
+        df["data_fim"] = None
 
     df["ano_referencia"] = df["data_inicio"].apply(extrair_ano)
     mask = df["ano_referencia"].isna()
+    df["ano_referencia"] = df["ano_referencia"].astype(object)
     df.loc[mask, "ano_referencia"] = df.loc[mask, "data_fim"].apply(extrair_ano)
     return df
 
@@ -94,8 +95,6 @@ def exibir(df):
 
     st.markdown("---")
 
-    col5, col6 = st.columns(2)
-# Linha 3 — Outra
     df_nat = df[df['natureza'] == 'OUTRA']
     if not df_nat.empty:
         top_nat = df_nat['autores'].dropna().value_counts().head(10).reset_index()

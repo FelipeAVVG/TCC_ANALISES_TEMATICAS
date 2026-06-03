@@ -14,17 +14,18 @@ def _preparar_temporal(df):
 
     def extrair_ano(valor):
         if pd.isna(valor):
-            return pd.NA
+            return None
         m = re.search(r"(\d{4})", str(valor))
-        return int(m.group(1)) if m else pd.NA
+        return int(m.group(1)) if m else None
 
     if "data_inicio" not in df.columns:
-        df["data_inicio"] = pd.NA
+        df["data_inicio"] = None
     if "data_fim" not in df.columns:
-        df["data_fim"] = pd.NA
+        df["data_fim"] = None
 
     df["ano"] = df["data_inicio"].apply(extrair_ano)
     mask = df["ano"].isna()
+    df["ano"] = df["ano"].astype(object)
     df.loc[mask, "ano"] = df.loc[mask, "data_fim"].apply(extrair_ano)
 
     return df.dropna(subset=["ano"]).copy()

@@ -11,17 +11,18 @@ def _preparar_datas(df):
 
     def extrair_ano(valor):
         if pd.isna(valor):
-            return pd.NA
+            return None
         m = re.search(r"(\d{4})", str(valor))
-        return int(m.group(1)) if m else pd.NA
+        return int(m.group(1)) if m else None
 
     if "data_inicio" not in df.columns:
-        df["data_inicio"] = pd.NA
+        df["data_inicio"] = None
     if "data_fim" not in df.columns:
-        df["data_fim"] = pd.NA
+        df["data_fim"] = None
 
     df["ano_referencia"] = df["data_inicio"].apply(extrair_ano)
     mask = df["ano_referencia"].isna()
+    df["ano_referencia"] = df["ano_referencia"].astype(object)
     df.loc[mask, "ano_referencia"] = df.loc[mask, "data_fim"].apply(extrair_ano)
 
     def montar_periodo(row):
@@ -110,8 +111,4 @@ def exibir(df):
 
         cols = [c for c in ['titulo', 'autores', 'periodo', 'natureza', 'nome_topico'] if c in df.columns]
         df_inst_exib = df_inst.sort_values('ano_referencia', ascending=False, na_position='last')
-        st.dataframe(
-            df_inst_exib[cols],
-            hide_index=True,
-            use_container_width=True
-        )
+        st.dataframe(df_inst_exib[cols], hide_index=True, use_container_width=True)
